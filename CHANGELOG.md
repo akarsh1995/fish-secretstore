@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-01-27
+
+### Fixed
+- Fixed Fisher event handler names to match conf.d filename convention
+  - Changed from `secretstore_install` to `secret_install`
+  - Changed from `secretstore_update` to `secret_update`  
+  - Changed from `secretstore_uninstall` to `secret_uninstall`
+- Fisher events now properly trigger during plugin installation, updates, and removal
+
 ## [1.0.0] - 2025-05-25
 
 ### Added

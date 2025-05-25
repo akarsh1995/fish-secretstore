@@ -40,7 +40,7 @@ function secret
             # Call the config function
             _secret_config $subcommand_args
         case version
-            echo "fish-secretstore v1.0.0"
+            echo "fish-secretstore v1.0.1"
         case help --help -h
             _secret_help
         case '*'

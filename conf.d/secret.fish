@@ -22,7 +22,7 @@ function __secretstore_init_dir
 end
 
 # Fisher event handlers
-function _secretstore_install --on-event secretstore_install
+function _secretstore_install --on-event secret_install
     set_color green
     echo "Installing fish-secretstore..."
     set_color normal
@@ -67,7 +67,7 @@ function _secretstore_install --on-event secretstore_install
     echo "Run 'secret --help' to see all available commands"
 end
 
-function _secretstore_update --on-event secretstore_update
+function _secretstore_update --on-event secret_update
     set_color yellow
     echo "Updating fish-secretstore..."
     set_color normal
@@ -78,7 +78,7 @@ function _secretstore_update --on-event secretstore_update
     echo "fish-secretstore updated successfully"
 end
 
-function _secretstore_uninstall --on-event secretstore_uninstall
+function _secretstore_uninstall --on-event secret_uninstall
     set_color red
     echo "Uninstalling fish-secretstore..."
     set_color normal
