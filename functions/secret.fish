@@ -1,8 +1,13 @@
 # A comprehensive secret management tool for fish shell
 function secret
+    # Set XDG_CONFIG_HOME if not already set
+    if not set -q XDG_CONFIG_HOME
+        set -gx XDG_CONFIG_HOME $HOME/.config
+    end
+
     # Check if a subcommand is provided
     if test (count $argv) -lt 1
-        echo "Usage: secret [add|delete|edit|export|get|list|load] [arguments...]"
+        _secret_help
         return 1
     end
 
@@ -31,9 +36,87 @@ function secret
         case load
             # Call the load function
             _secret_load $subcommand_args
+        case config
+            # Call the config function
+            _secret_config $subcommand_args
+        case version
+            echo "fish-secretstore v1.0.0"
+        case help --help -h
+            _secret_help
         case '*'
             echo "Unknown subcommand: $subcommand"
-            echo "Available subcommands: add, delete, edit, export, get, list, load"
+            _secret_help
+            return 1
+    end
+end
+
+# Function to display help information
+function _secret_help
+    echo "fish-secretstore v1.0.0 - Secure secret management for Fish shell"
+    echo ""
+    echo "USAGE:"
+    echo "    secret <COMMAND> [OPTIONS]"
+    echo ""
+    echo "COMMANDS:"
+    echo "    add     NAME VALUE DESCRIPTION    Add or update a secret"
+    echo "    delete  NAME                      Delete a secret"
+    echo "    edit    NAME                      Edit a secret interactively"
+    echo "    export  VAR_NAME DESCRIPTION      Export environment variable as secret"
+    echo "    get     NAME [--with-name|--with-description|--json]"
+    echo "                                      Retrieve a secret value"
+    echo "    list    [--with-masked-values]    List all secrets"
+    echo "    load                              Load all secrets as environment variables"
+    echo "    config  [set-recipient EMAIL]     Configure GPG recipient"
+    echo "    version                           Show version information"
+    echo "    help                              Show this help message"
+    echo ""
+    echo "EXAMPLES:"
+    echo "    secret add API_KEY \"abc123\" \"My API key\""
+    echo "    secret get API_KEY"
+    echo "    secret list --with-masked-values"
+    echo "    secret export DATABASE_URL \"Database connection string\""
+    echo "    secret load"
+    echo ""
+    echo "For more information, visit: https://github.com/akarsh1995/fish-secretstore"
+end
+
+# Function to get the configured GPG recipient
+function _secret_get_gpg_recipient
+    set -l gpg_recipient "$SECRETSTORE_GPG_RECIPIENT"
+    if test -z "$gpg_recipient"
+        # Try to get default GPG key
+        set gpg_recipient (gpg --list-secret-keys --keyid-format LONG 2>/dev/null | grep "^sec" | head -1 | awk '{print $2}' | cut -d'/' -f2)
+        if test -z "$gpg_recipient"
+            echo "Error: No GPG recipient configured. Set SECRETSTORE_GPG_RECIPIENT or configure a default GPG key." >&2
+            echo "Example: secret config set-recipient 'your.email@example.com'" >&2
+            return 1
+        end
+    end
+    echo $gpg_recipient
+end
+
+# Function to configure secretstore settings
+function _secret_config
+    if test (count $argv) -lt 1
+        echo "Current configuration:"
+        echo "  GPG Recipient: "(set -q SECRETSTORE_GPG_RECIPIENT; and echo $SECRETSTORE_GPG_RECIPIENT; or echo "(using default key)")
+        echo ""
+        echo "Usage: secret config [set-recipient EMAIL]"
+        echo "  set-recipient EMAIL   Set the GPG recipient for encryption"
+        return 0
+    end
+
+    switch $argv[1]
+        case set-recipient
+            if test (count $argv) -lt 2
+                echo "Please provide an email address or GPG key ID"
+                return 1
+            end
+            set -U SECRETSTORE_GPG_RECIPIENT "$argv[2]"
+            echo "GPG recipient set to: $argv[2]"
+        case '*'
+            echo "Unknown config option: $argv[1]"
+            echo "Available options: set-recipient"
             return 1
     end
 end
@@ -60,7 +143,8 @@ function _secret_add
 
     # If we have an encrypted file, decrypt it to memory
     if test -f $encrypted_json_path
-        set json_content (gpg --quiet --decrypt $encrypted_json_path 2>/dev/null)
+        set -l gpg_recipient (_secret_get_gpg_recipient)
+        set json_content (gpg --quiet --decrypt --local-user $gpg_recipient $encrypted_json_path 2>/dev/null)
         if test $status -ne 0
             echo "Failed to decrypt secrets file"
             return 1
@@ -88,8 +172,13 @@ function _secret_add
     end
 
     # Update the JSON with the new secret and encrypt directly from memory to file
+    set -l gpg_recipient (_secret_get_gpg_recipient)
+    if test $status -ne 0
+        return 1
+    end
+    
     echo $json_content | jq --arg key "$argv[1]" --arg value "$argv[2]" --arg desc "$description" \
-        '.[$key] = {"value": $value, "description": $desc}' | gpg --quiet --yes --recipient "Akarsh Jain" --encrypt --output $encrypted_json_path
+        '.[$key] = {"value": $value, "description": $desc}' | gpg --quiet --yes --recipient "$gpg_recipient" --encrypt --output $encrypted_json_path
 
     if test $status -ne 0
         echo "Failed to encrypt secrets file"
@@ -97,7 +186,8 @@ function _secret_add
     end
 
     # Check if the secret was added/updated successfully
-    set -l new_content (gpg --quiet --decrypt $encrypted_json_path 2>/dev/null)
+    set -l gpg_recipient (_secret_get_gpg_recipient)
+    set -l new_content (gpg --quiet --decrypt --local-user $gpg_recipient $encrypted_json_path 2>/dev/null)
     if not echo $new_content | jq -e --arg key "$argv[1]" 'has($key)' >/dev/null
         echo "Failed to add/update secret"
         return 1
@@ -127,7 +217,8 @@ function _secret_delete
     end
 
     # Decrypt the secrets file directly to memory (using command substitution)
-    set -l decrypted_content (gpg --quiet --decrypt $encrypted_json_path 2>/dev/null)
+    set -l gpg_recipient (_secret_get_gpg_recipient)
+    set -l decrypted_content (gpg --quiet --decrypt --local-user $gpg_recipient $encrypted_json_path 2>/dev/null)
     if test $status -ne 0
         echo "Failed to decrypt secrets file"
         return 1
@@ -140,7 +231,12 @@ function _secret_delete
     end
 
     # Delete the secret and encrypt directly from memory to file
-    echo $decrypted_content | jq --arg key "$argv[1]" 'del(.[$key])' | gpg --quiet --yes --recipient "Akarsh Jain" --encrypt --output $encrypted_json_path
+    set -l gpg_recipient (_secret_get_gpg_recipient)
+    if test $status -ne 0
+        return 1
+    end
+    
+    echo $decrypted_content | jq --arg key "$argv[1]" 'del(.[$key])' | gpg --quiet --yes --recipient "$gpg_recipient" --encrypt --output $encrypted_json_path
 
     if test $status -ne 0
         echo "Failed to encrypt secrets file"
@@ -171,7 +267,8 @@ function _secret_edit
     end
 
     # Decrypt the secrets file directly to memory
-    set -l decrypted_content (gpg --quiet --decrypt $encrypted_json_path 2>/dev/null)
+    set -l gpg_recipient (_secret_get_gpg_recipient)
+    set -l decrypted_content (gpg --quiet --decrypt --local-user $gpg_recipient $encrypted_json_path 2>/dev/null)
     if test $status -ne 0
         echo "Failed to decrypt secrets file"
         return 1
@@ -228,8 +325,13 @@ function _secret_edit
     end
 
     # Update the JSON with the new secret and encrypt directly from memory to file
+    set -l gpg_recipient (_secret_get_gpg_recipient)
+    if test $status -ne 0
+        return 1
+    end
+    
     echo $decrypted_content | jq --arg key "$argv[1]" --arg value "$new_content" --arg desc "$current_description" \
-        '.[$key] = {"value": $value, "description": $desc}' | gpg --quiet --yes --recipient "Akarsh Jain" --encrypt --output $encrypted_json_path
+        '.[$key] = {"value": $value, "description": $desc}' | gpg --quiet --yes --recipient "$gpg_recipient" --encrypt --output $encrypted_json_path
 
     if test $status -ne 0
         echo "Failed to encrypt secrets file"
@@ -237,7 +339,7 @@ function _secret_edit
     end
 
     # Check if the secret was updated successfully
-    set -l verification_content (gpg --quiet --decrypt $encrypted_json_path 2>/dev/null)
+    set -l verification_content (gpg --quiet --decrypt --local-user $gpg_recipient $encrypted_json_path 2>/dev/null)
     if not echo $verification_content | jq -e --arg key "$argv[1]" 'has($key)' >/dev/null
         echo "Failed to update secret"
         return 1
@@ -294,7 +396,8 @@ function _secret_get
     end
 
     # Decrypt the secrets file directly to memory
-    set -l decrypted_content (gpg --quiet --decrypt $encrypted_json_path 2>/dev/null)
+    set -l gpg_recipient (_secret_get_gpg_recipient)
+    set -l decrypted_content (gpg --quiet --decrypt --local-user $gpg_recipient $encrypted_json_path 2>/dev/null)
     if test $status -ne 0
         echo "Failed to decrypt secrets file"
         return 1
@@ -351,7 +454,8 @@ function _secret_list
     end
 
     # Decrypt the secrets file directly to memory (using command substitution)
-    set -l decrypted_content (gpg --quiet --decrypt $encrypted_json_path 2>/dev/null)
+    set -l gpg_recipient (_secret_get_gpg_recipient)
+    set -l decrypted_content (gpg --quiet --decrypt --local-user $gpg_recipient $encrypted_json_path 2>/dev/null)
     if test $status -ne 0
         echo "Failed to decrypt secrets file"
         return 1
@@ -392,7 +496,8 @@ function _secret_load
     end
 
     # Decrypt the secrets file directly to memory (using command substitution)
-    set -l decrypted_content (gpg --quiet --decrypt $encrypted_json_path 2>/dev/null)
+    set -l gpg_recipient (_secret_get_gpg_recipient)
+    set -l decrypted_content (gpg --quiet --decrypt --local-user $gpg_recipient $encrypted_json_path 2>/dev/null)
     if test $status -ne 0
         echo "Failed to decrypt secrets file"
         return 1
@@ -414,7 +519,8 @@ function __fish_complete_secrets
 
     if test -f $encrypted_json_path
         # Get the list of secret names
-        set -l decrypted_content (gpg --quiet --decrypt $encrypted_json_path 2>/dev/null)
+        set -l gpg_recipient (_secret_get_gpg_recipient)
+        set -l decrypted_content (gpg --quiet --decrypt --local-user $gpg_recipient $encrypted_json_path 2>/dev/null)
         if test $status -eq 0
             # Extract and output the keys
             echo $decrypted_content | jq -r 'keys[]'
