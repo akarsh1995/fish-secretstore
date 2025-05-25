@@ -49,7 +49,7 @@ jobs:
       - name: Test basic functionality
         run: |
           fish -c "
-          set -gx FILECRYPT_GPG_RECIPIENT test@example.com
+          set -gx SECRETSTORE_GPG_RECIPIENT test@example.com
           source functions/secret.fish
           source completions/secret.fish
           source conf.d/secret.fish
@@ -100,8 +100,8 @@ jobs:
   auto-format:
     runs-on: ubuntu-latest
     needs: [format-check]
-    # Only run this job if format-check fails
-    if: ${{ github.event_name == 'pull_request' && failure() && needs.format-check.result == 'failure' }}
+    # Only run this job if format-check fails and this is a pull request
+    if: ${{ always() && github.event_name == 'pull_request' && needs.format-check.result == 'failure' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -112,6 +112,8 @@ jobs:
         run: |
           echo "Formatting Fish files in the repository"
           find . -name "*.fish" -type f -exec fish_indent -w {} \;
+          echo "Checking if any files were modified:"
+          git status --porcelain
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
@@ -119,3 +121,4 @@ jobs:
           commit_user_name: "GitHub Actions"
           commit_user_email: "actions@github.com"
           commit_author: "GitHub Actions <actions@github.com>"
+          token: ${{ secrets.GITHUB_TOKEN }}
