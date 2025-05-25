@@ -39,13 +39,13 @@ echo
 echo "======================================"
 echo "📊 Test Results Summary:"
 
-if test "$structure_passed" = "true"
+if test "$structure_passed" = true
     echo "✅ Plugin Structure: PASSED"
 else
     echo "❌ Plugin Structure: FAILED"
 end
 
-if test "$functional_passed" = "true"
+if test "$functional_passed" = true
     echo "✅ Functionality: PASSED"
 else
     echo "❌ Functionality: FAILED"
@@ -53,7 +53,7 @@ end
 
 echo
 
-if test "$structure_passed" = "true" -a "$functional_passed" = "true"
+if test "$structure_passed" = true -a "$functional_passed" = true
     echo "🎉 All tests passed! fish-secretstore is ready for production."
     exit 0
 else

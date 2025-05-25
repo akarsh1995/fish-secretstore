@@ -34,11 +34,11 @@ function _secretstore_install --on-event secretstore_install
     set -l missing_deps
 
     if not command -sq gpg
-        set missing_deps $missing_deps "gpg"
+        set missing_deps $missing_deps gpg
     end
 
     if not command -sq jq
-        set missing_deps $missing_deps "jq"
+        set missing_deps $missing_deps jq
     end
 
     if test (count $missing_deps) -gt 0

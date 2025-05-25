@@ -30,7 +30,7 @@ function __fish_complete_secrets
     if not set -q XDG_CONFIG_HOME
         set -l XDG_CONFIG_HOME $HOME/.config
     end
-    
+
     # Decrypt secrets directly to memory and extract keys (secret names)
     set -l encrypted_json_path $XDG_CONFIG_HOME/fish/secure/secrets/secrets.json.gpg
 
@@ -75,6 +75,6 @@ complete -c secret -f -n "__fish_seen_subcommand_from get; and __fish_seen_subco
 complete -c secret -f -n "__fish_seen_subcommand_from list" -l with-masked-values -d "Show masked values for secrets"
 
 # For 'config' subcommand - complete with config options
-complete -c secret -f -n "__fish_seen_subcommand_from config" -a "set-recipient" -d "Set GPG recipient for encryption"
+complete -c secret -f -n "__fish_seen_subcommand_from config" -a set-recipient -d "Set GPG recipient for encryption"
 
 # For 'load' subcommand - no additional completions needed

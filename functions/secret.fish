@@ -176,7 +176,7 @@ function _secret_add
     if test $status -ne 0
         return 1
     end
-    
+
     echo $json_content | jq --arg key "$argv[1]" --arg value "$argv[2]" --arg desc "$description" \
         '.[$key] = {"value": $value, "description": $desc}' | gpg --quiet --yes --recipient "$gpg_recipient" --encrypt --output $encrypted_json_path
 
@@ -235,7 +235,7 @@ function _secret_delete
     if test $status -ne 0
         return 1
     end
-    
+
     echo $decrypted_content | jq --arg key "$argv[1]" 'del(.[$key])' | gpg --quiet --yes --recipient "$gpg_recipient" --encrypt --output $encrypted_json_path
 
     if test $status -ne 0
@@ -329,7 +329,7 @@ function _secret_edit
     if test $status -ne 0
         return 1
     end
-    
+
     echo $decrypted_content | jq --arg key "$argv[1]" --arg value "$new_content" --arg desc "$current_description" \
         '.[$key] = {"value": $value, "description": $desc}' | gpg --quiet --yes --recipient "$gpg_recipient" --encrypt --output $encrypted_json_path
 

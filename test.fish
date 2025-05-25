@@ -93,7 +93,7 @@ function test_plugin_structure
     end
 
     # Check for version command
-    if grep -q "version" "$plugin_dir/functions/secret.fish"
+    if grep -q version "$plugin_dir/functions/secret.fish"
         echo "✓ Version command available"
     else
         echo "✗ Missing version command"
