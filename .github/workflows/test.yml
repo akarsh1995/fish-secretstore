@@ -50,6 +50,7 @@ jobs:
         run: |
           fish -c "
           set -gx SECRETSTORE_GPG_RECIPIENT test@example.com
+          set fish_function_path $PWD/functions $fish_function_path
           source functions/secret.fish
           source completions/secret.fish
           source conf.d/secret.fish

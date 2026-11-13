@@ -39,8 +39,13 @@ function test_plugin_structure
 
     set -l expected_functions secret _secret_add _secret_delete _secret_edit _secret_export _secret_get _secret_list _secret_load _secret_help __fish_complete_secrets
     for func in $expected_functions
-        if grep -q "function $func" "$plugin_dir/functions/secret.fish" "$plugin_dir/completions/secret.fish"
-            echo "✓ Function $func defined"
+        if grep -q "function $func" $plugin_dir/functions/*.fish $plugin_dir/completions/secret.fish
+            if test -f "$plugin_dir/functions/$func.fish"
+                echo "✓ Function $func defined in functions/$func.fish"
+            else
+                echo "✗ Function $func is not in its own file functions/$func.fish"
+                set errors (math $errors + 1)
+            end
         else
             echo "✗ Missing function: $func"
             set errors (math $errors + 1)
@@ -93,7 +98,7 @@ function test_plugin_structure
     end
 
     # Check for version command
-    if grep -q version "$plugin_dir/functions/secret.fish"
+    if grep -q version $plugin_dir/functions/*.fish
         echo "✓ Version command available"
     else
         echo "✗ Missing version command"
@@ -101,7 +106,7 @@ function test_plugin_structure
     end
 
     # Check for help command
-    if grep -q "help\|_secret_help" "$plugin_dir/functions/secret.fish"
+    if grep -q "help\|_secret_help" $plugin_dir/functions/*.fish
         echo "✓ Help system available"
     else
         echo "✗ Missing help system"
