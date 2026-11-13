@@ -1,7 +1,9 @@
 # Function to complete secrets for autocompletion
-function __fish_complete_secrets
+function _secret_complete
     # Decrypt secrets directly to memory and extract keys (secret names)
-    set -l encrypted_json_path $XDG_CONFIG_HOME/fish/secure/secrets/secrets.json.gpg
+    set -l config_home $XDG_CONFIG_HOME
+    test -n "$config_home"; or set config_home $HOME/.config
+    set -l encrypted_json_path $config_home/fish/secure/secrets/secrets.json.gpg
 
     if test -f $encrypted_json_path
         # Get the list of secret names

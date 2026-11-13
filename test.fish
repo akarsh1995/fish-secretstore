@@ -37,7 +37,7 @@ function test_plugin_structure
     echo
     echo "Checking function definitions..."
 
-    set -l expected_functions secret _secret_add _secret_delete _secret_edit _secret_export _secret_get _secret_list _secret_load _secret_help __fish_complete_secrets
+    set -l expected_functions secret _secret_add _secret_delete _secret_edit _secret_export _secret_get _secret_list _secret_load _secret_help _secret_complete
     for func in $expected_functions
         if grep -q "function $func" $plugin_dir/functions/*.fish $plugin_dir/completions/secret.fish
             if test -f "$plugin_dir/functions/$func.fish"
